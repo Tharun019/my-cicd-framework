@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────
+# PIPELINE CONTROL PANEL
+# This file controls what the CI/CD pipeline does
+# Change these values to turn stages on/off
+# ─────────────────────────────────────────────────
+
+# What type of project is this?
+# Options: fullstack | frontend | backend
+project_type: fullstack
+
+# Project metadata
+project:
+  name: my-cicd-framework
+  version: 1.0.0
+  description: CI/CD Learning Framework
+
+# ─────────────────────────────────────────────────
+# FEATURE FLAGS
+# true  = pipeline runs this stage
+# false = pipeline skips this stage
+# ─────────────────────────────────────────────────
+features:
+  frontend: true # Build React frontend?
+  backend: true # Build FastAPI backend?
+  test: true # Run tests?
+  docker: true # Build Docker image?
+  deploy: true # Deploy container?
+
+# ─────────────────────────────────────────────────
+# ENVIRONMENT SETTINGS
+# ─────────────────────────────────────────────────
+environment:
+  node_version: "18"
+  python_version: "3.11"
+  frontend_port: 3000
+  backend_port: 8000
+
+# ─────────────────────────────────────────────────
+# DOCKER SETTINGS
+# ─────────────────────────────────────────────────
+docker:
+  image_name: my-cicd-app
+  container_name: my-cicd-container
+  frontend_port: 80
+  backend_port: 8000

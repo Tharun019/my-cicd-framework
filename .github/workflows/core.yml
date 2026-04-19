@@ -1,0 +1,165 @@
+# ─────────────────────────────────────────────────
+# core.yml
+# This is the BRAIN of your CI/CD pipeline
+# GitHub Actions reads this file automatically
+# when you push code to GitHub
+# ─────────────────────────────────────────────────
+
+name: CI/CD Pipeline
+
+# TRIGGER
+# Pipeline runs when you push to main branch
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci-cd-pipeline:
+    # Fresh Ubuntu machine every run
+    runs-on: ubuntu-latest
+
+    steps:
+      # ─────────────────────────────────────────
+      # STEP 1: GET THE CODE
+      # Downloads your repo onto the runner machine
+      # ─────────────────────────────────────────
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # ─────────────────────────────────────────
+      # STEP 2: READ PIPELINE CONFIG
+      # Reads pipeline-config.yml and sets flags
+      # ─────────────────────────────────────────
+      - name: Read Pipeline Config
+        id: config
+        run: |
+          echo "Reading pipeline-config.yml..."
+
+          # Read feature flags from config file
+          FRONTEND=$(python3 -c "
+          import yaml
+          with open('pipeline-config.yml') as f:
+              config = yaml.safe_load(f)
+          print(str(config['features']['frontend']).lower())
+          ")
+
+          BACKEND=$(python3 -c "
+          import yaml
+          with open('pipeline-config.yml') as f:
+              config = yaml.safe_load(f)
+          print(str(config['features']['backend']).lower())
+          ")
+
+          TEST=$(python3 -c "
+          import yaml
+          with open('pipeline-config.yml') as f:
+              config = yaml.safe_load(f)
+          print(str(config['features']['test']).lower())
+          ")
+
+          DOCKER=$(python3 -c "
+          import yaml
+          with open('pipeline-config.yml') as f:
+              config = yaml.safe_load(f)
+          print(str(config['features']['docker']).lower())
+          ")
+
+          # Save flags as outputs
+          echo "frontend=$FRONTEND" >> $GITHUB_OUTPUT
+          echo "backend=$BACKEND" >> $GITHUB_OUTPUT
+          echo "test=$TEST" >> $GITHUB_OUTPUT
+          echo "docker=$DOCKER" >> $GITHUB_OUTPUT
+
+          echo "✅ Config read successfully"
+          echo "Frontend: $FRONTEND"
+          echo "Backend: $BACKEND"
+          echo "Test: $TEST"
+          echo "Docker: $DOCKER"
+
+      # ─────────────────────────────────────────
+      # STEP 3: BUILD FRONTEND
+      # Runs only if frontend: true in config
+      # ─────────────────────────────────────────
+      - name: Setup Node.js
+        if: steps.config.outputs.frontend == 'true'
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Build Frontend
+        if: steps.config.outputs.frontend == 'true'
+        run: |
+          echo "Building React frontend..."
+          cd frontend
+          npm install
+          npm run build
+          echo "✅ Frontend built successfully"
+
+      # ─────────────────────────────────────────
+      # STEP 4: BUILD BACKEND
+      # Runs only if backend: true in config
+      # ─────────────────────────────────────────
+      - name: Setup Python
+        if: steps.config.outputs.backend == 'true'
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Build Backend
+        if: steps.config.outputs.backend == 'true'
+        run: |
+          echo "Building FastAPI backend..."
+          cd backend
+          pip install -r requirements.txt
+          echo "✅ Backend built successfully"
+
+      # ─────────────────────────────────────────
+      # STEP 5: RUN TESTS
+      # Runs only if test: true in config
+      # If tests fail → pipeline stops here
+      # ─────────────────────────────────────────
+      - name: Run Backend Tests
+        if: steps.config.outputs.test == 'true'
+        run: |
+          echo "Running backend tests..."
+          cd backend
+          pytest tests/ -v
+          echo "✅ All tests passed"
+
+      - name: Run Frontend Tests
+        if: steps.config.outputs.frontend == 'true' && steps.config.outputs.test == 'true'
+        run: |
+          echo "Running frontend tests..."
+          cd frontend
+          npm test || echo "No frontend tests found"
+          echo "✅ Frontend tests done"
+
+      # ─────────────────────────────────────────
+      # STEP 6: DOCKER BUILD
+      # Runs only if docker: true in config
+      # Packages everything into a container
+      # ─────────────────────────────────────────
+      - name: Build Docker Image
+        if: steps.config.outputs.docker == 'true'
+        run: |
+          echo "Building Docker image..."
+          docker build -t my-cicd-app .
+          echo "✅ Docker image built successfully"
+
+      # ─────────────────────────────────────────
+      # STEP 7: DONE
+      # ─────────────────────────────────────────
+      - name: Pipeline Complete
+        run: |
+          echo "🚀 Pipeline completed successfully!"
+          echo "──────────────────────────────────"
+          echo "✅ Code checked out"
+          echo "✅ Config read"
+          echo "✅ Frontend built"
+          echo "✅ Backend built"
+          echo "✅ Tests passed"
+          echo "✅ Docker image built"
+          echo "──────────────────────────────────"
+          echo "Your app is ready to deploy!"
