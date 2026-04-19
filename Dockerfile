@@ -24,25 +24,9 @@ COPY backend/ ./backend/
 # Frontend Setup
 COPY --from=frontend-build /app/frontend/dist ./dist
 
-# Write nginx config using Python to avoid shell escaping issues
-RUN python3 -c "
-config = '''server {
-    listen 80;
-    location / {
-        root /app/dist;
-        index index.html;
-        try_files \$uri \$uri/ /index.html;
-    }
-    location /api {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-    }
-}'''
-open('/etc/nginx/conf.d/default.conf', 'w').write(config)
-"
-
-# Remove default nginx config
+# Nginx config
+RUN mkdir -p /etc/nginx/conf.d
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 RUN rm -f /etc/nginx/sites-enabled/default
 
 # Startup Script
